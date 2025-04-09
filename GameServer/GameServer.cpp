@@ -3,32 +3,48 @@
 #include "CorePch.h"
 
 #include <thread>
+#include <mutex>
 
-atomic<int32> sum = 0;
+vector<int32> v;
+mutex m;
 
-void Add()
+// RAII (Resource Acquisition Is Initialization)
+template<typename T>
+
+class LockGuard
 {
-	for (int32 i = 0; i < 100'000; i++)
+public:
+	LockGuard(T& m) : m(m)
 	{
-		sum++;
+		_mutex = m;
+		_mutex.lock();
+	}
+	~LockGuard()
+	{
+		_mutex.unlock();
+	}
+private:
+	T& _mutex;
+};
+
+void Push()
+{
+	for (int32 i=0; i< 10000;i++)
+	{
+		// 자물쇠 잠그기
+		lock_guard<mutex> lock(m);
+		// unique_lock<mutex> uniqueLock(m, std::defer_lock);
+		v.push_back(i);
 	}
 }
-void Sub()
-{
-	for (int32 i = 0; i < 100'000; i++)
-	{
-		sum--;
-	}
-}
+
 int main()
 {
-	Add();
-	Sub();
-	std::cout << sum << std::endl;
+	std::thread t1(Push);
+	std::thread t2(Push);
 
-	std::thread t1(Add);
-	std::thread t2(Sub);
 	t1.join();
 	t2.join();
-	std::cout << sum << std::endl;
+
+	cout << "v.size() : " << v.size() << endl;
 }
